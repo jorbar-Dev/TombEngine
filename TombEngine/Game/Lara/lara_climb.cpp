@@ -368,8 +368,8 @@ void lara_col_climb_idle(ItemInfo* item, CollisionInfo* coll)
 			}
 			else
 			{
-				item->Animation.TargetState = LS_LADDER_TO_CROUCH;
-				item->Animation.RequiredState = LS_CROUCH_IDLE;
+				//item->Animation.TargetState = LS_LADDER_TO_CROUCH;
+				//item->Animation.RequiredState = LS_CROUCH_IDLE;
 			}
 		}
 	}
