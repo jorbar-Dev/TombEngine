@@ -193,7 +193,7 @@ void lara_col_climb_up(ItemInfo* item, CollisionInfo* coll)
 			{
 				// climb upwards
 				item->Animation.TargetState = LS_LADDER_UP;
-				item->Pose.Position.y -= BLOCK(.25);
+				//item->Pose.Position.y -= BLOCK(.25);
 				return;
 				
 			}
@@ -201,7 +201,7 @@ void lara_col_climb_up(ItemInfo* item, CollisionInfo* coll)
 			{
 				// climb upwards
 				item->Animation.TargetState = LS_LADDER_UP;
-				item->Pose.Position.y -= BLOCK(.25);
+				//item->Pose.Position.y -= BLOCK(.25);
 			}
 		}
 		else
