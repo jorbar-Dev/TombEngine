@@ -368,8 +368,10 @@ void lara_col_climb_idle(ItemInfo* item, CollisionInfo* coll)
 			}
 			else
 			{
-				//item->Animation.TargetState = LS_LADDER_TO_CROUCH;
-				//item->Animation.RequiredState = LS_CROUCH_IDLE;
+				// Disabling this state transition, so that the ladder climb up state should be the only point where you can trasfer to Ladder_to_crouch state
+				// Done to prevent clipping through walls
+				// item->Animation.TargetState = LS_LADDER_TO_CROUCH;
+				// item->Animation.RequiredState = LS_CROUCH_IDLE;
 			}
 		}
 	}
