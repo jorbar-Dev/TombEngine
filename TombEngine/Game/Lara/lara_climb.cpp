@@ -7,6 +7,7 @@
 #include "Game/control/control.h"
 #include "Game/items.h"
 #include "Game/Lara/lara.h"
+#include "Game/Lara/lara_collide.h"
 #include "Game/Lara/lara_helpers.h"
 #include "Game/Lara/lara_overhang.h"
 #include "Game/Lara/lara_tests.h"
@@ -146,43 +147,66 @@ void lara_col_climb_up(ItemInfo* item, CollisionInfo* coll)
 		else
 			return;
 
+		// shift position by yshift  and raise position by 1 click
 		item->Pose.Position.y += yShift - CLICK(1);
+
+		float LADDER_ADJUSTED_TEST_DISTANCE = LADDER_TEST_DISTANCE;
 
 		resultRight = LaraTestClimbUpPos(item, coll->Setup.Radius, coll->Setup.Radius + LADDER_TEST_DISTANCE, &shiftRight, &ledgeRight);
 		resultLeft = LaraTestClimbUpPos(item, coll->Setup.Radius, -(coll->Setup.Radius + LADDER_TEST_DISTANCE), &shiftLeft, &ledgeLeft);
-
+		
+		// go down 1 click? --- does testing require this click adjustment...
 		item->Pose.Position.y += CLICK(1);
 		 
+		// if forward is pressed and result right and result left are defined
 		if (IsHeld(In::Forward) && resultRight && resultLeft)
 		{
-			if (resultRight < 0 || resultLeft < 0)
+
+			// need to check if angled ledge is above and move to that 
+			// probably need to keep using LS_LADDER_UP state until close to ledge
+			if (resultRight < 0 && resultLeft < 0) // if and the player can climb pass edge and grabbing does not occur
 			{
 				item->Animation.TargetState = LS_LADDER_IDLE;
 
 				AnimateItem(item);
 
-				if (abs(ledgeRight - ledgeLeft) <= LADDER_TEST_DISTANCE)
+				if (abs(ledgeRight - ledgeLeft) <= LADDER_ADJUSTED_TEST_DISTANCE)
 				{
-					if (resultRight != -1 || resultLeft != -1)
+					
+					if (resultRight != -1 || resultLeft != -1) // atleast one result == -2 or one result is 0 1 or 2
 					{
+						// climb onto a ledge
 						item->Animation.TargetState = LS_LADDER_TO_CROUCH;
 						item->Animation.RequiredState = LS_CROUCH_IDLE;
 					}
-					else
+					else // result == -1 , 0 1 2
 					{
+						// ledge is out of reach
 						item->Animation.TargetState = LS_GRABBING;
+						// raise position 1 click and lower by the average of the ledge heights
 						item->Pose.Position.y += (ledgeRight + ledgeLeft) / 2 - CLICK(1);
 					}
+					
 				}
+			}
+			else if (resultRight < 0 || resultLeft < 0)
+			{
+				// climb upwards
+				item->Animation.TargetState = LS_LADDER_UP;
+				item->Pose.Position.y -= BLOCK(.25);
+				return;
+				
 			}
 			else
 			{
+				// climb upwards
 				item->Animation.TargetState = LS_LADDER_UP;
-				item->Pose.Position.y -= yShift;
+				item->Pose.Position.y -= BLOCK(.25);
 			}
 		}
 		else
 		{
+			// cannot climb up
 			item->Animation.TargetState = LS_LADDER_IDLE;
 
 			if (yShift != 0)
@@ -895,14 +919,16 @@ int LaraTestClimbUpPos(ItemInfo* item, int front, int right, int* shift, int* le
 
 	*shift = 0;
 
+	// Return 0 if you would climb through ceiling
 	// Test center.
 	auto pointColl = GetPointCollision(*item);
 	int vPos = item->Pose.Position.y - CLICK(4);
-	if ((pointColl.GetCeilingHeight() - vPos) > LADDER_CLIMB_SHIFT)
+	if ((pointColl.GetCeilingHeight() - vPos) > LADDER_CLIMB_SHIFT) // if the item's (Lara) position ... ceiling height - item position.y + 4 click
 		return 0;
 
 	pointColl = GetPointCollision(probePos, item->RoomNumber);
-	int ceiling = (CLICK(1) - probePos.y) + pointColl.GetCeilingHeight();
+	int ceiling = (CLICK(1) - probePos.y) + pointColl.GetCeilingHeight(); // ceiling equals 1 click - the probe position + ceiling height
+	// ceiling = ceiling height - probe position.y + height == difference between probe height and cailing height + 1 click
 
 	pointColl = GetPointCollision(Vector3i(probePos.x + probeOffset.x, probePos.y, probePos.z + probeOffset.z), pointColl.GetRoomNumber());
 	int height = pointColl.GetFloorHeight();
@@ -914,20 +940,23 @@ int LaraTestClimbUpPos(ItemInfo* item, int front, int right, int* shift, int* le
 	else
 	{
 		height -= probePos.y;
-		*ledge = height;
+		*ledge = height; 
 	}
 	
+	// if the difference between the ceiling and probe + 1 click is greater than ladder shift return 0
 	if (ceiling > LADDER_CLIMB_SHIFT)
 		return 0;
 
 	if (ceiling > 0)
 		*shift = ceiling;
 	
+
+	// if there is no height return 1
 	if (height == NO_HEIGHT)
 	{
 		return 1;
 	}
-	else
+	else // if the height exists
 	{
 		if (height <= CLICK(0.5f))
 		{
@@ -946,11 +975,12 @@ int LaraTestClimbUpPos(ItemInfo* item, int front, int right, int* shift, int* le
 			else
 				return 0;
 		}
-		else
+		else 
 		{
 			ceiling = GetPointCollision(Vector3i(probePos.x + probeOffset.x, probePos.y, probePos.z + probeOffset.z), pointColl.GetRoomNumber()).GetCeilingHeight() - probePos.y;
 			if (ceiling < CLICK(2))
 			{
+				// height == floor height , ceiling == ceiling height - probe position , height - ceiling == floor height - ceiling height + probe pos y
 				if ((height - ceiling) <= LARA_HEIGHT)
 				{
 					if ((height - ceiling) < CLICK(2))
